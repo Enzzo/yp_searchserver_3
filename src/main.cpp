@@ -68,10 +68,10 @@ void AddDocument(std::vector<std::vector<std::string>>& documents, const std::se
 
 // Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
 std::set<std::string> ParseQuery(const std::string& text, const std::set<std::string>& stop_words) {
-    std::set<std::string> query_words;
-
+    // TODO: тут исправить
+    std::set<std::string> query_words = {SplitIntoWordsNoStop(text, stop_words).begin(), SplitIntoWordsNoStop(text, stop_words).end()};
     // Напишите код функции
-
+    
     return query_words;
 }
 
