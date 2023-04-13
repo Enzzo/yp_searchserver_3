@@ -60,8 +60,10 @@ std::vector<std::string> SplitIntoWordsNoStop(const std::string& text, const std
     return words;
 }
 
-void AddDocument(std::vector<std::vector<std::string>>& documents, const std::set<std::string>& stop_words,
-                 const std::string& document) {
+void AddDocument(   std::vector<std::pair<int, std::vector<std::string>>>& documents, 
+                    const std::set<std::string>& stop_words,
+                    int document_id,
+                    const std::string& document) {
     const std::vector<std::string> words = SplitIntoWordsNoStop(document, stop_words);
     documents.push_back(words);
 }
@@ -74,7 +76,8 @@ std::set<std::string> ParseQuery(const std::string& text, const std::set<std::st
 
 // Возвращает true, если среди слов документа (document_words)
 // встречаются слова поискового запроса query_words
-bool MatchDocument(const std::vector<std::string>& document_words, const std::set<std::string>& query_words) {
+int MatchDocument(  std::pair<int, const std::vector<std::string>>& document_words, 
+                    const std::set<std::string>& query_words) {
     for(const std::string& word : document_words){
         if(query_words.find(word) != query_words.end()){
             return true;
@@ -85,8 +88,9 @@ bool MatchDocument(const std::vector<std::string>& document_words, const std::se
 
 // Возвращает массив id документов, подходящих под запрос query
 // Стоп-слова исключаются из поиска
-std::vector<int> FindDocuments(const std::vector<std::vector<std::string>>& documents, const std::set<std::string>& stop_words,
-                          const std::string& raw_query) {
+std::vector<std::pair<int, int>> FindDocuments(const std::vector<std::pair<int, std::vector<std::string>>>& documents, 
+            const std::set<std::string>& stop_words,
+            const std::string& raw_query) {
     std::vector<int> matched_documents;
 
     std::set<std::string> query = ParseQuery(raw_query, stop_words);
@@ -109,14 +113,14 @@ int main() {
     const std::set<std::string> stop_words = ParseStopWords(stop_words_joined);
 
     // Read documents
-    std::vector<std::vector<std::string>> documents;
+    std::vector<std::pair<int, std::vector<std::string>>> documents;
     const int document_count = ReadLineWithNumber();
     for (int document_id = 0; document_id < document_count; ++document_id) {
-        AddDocument(documents, stop_words, ReadLine());
+        AddDocument(documents, stop_words, document_id, ReadLine());
     }
 
     const std::string query = ReadLine();
-    for (const int document_id : FindDocuments(documents, stop_words, query)) {
-        std::cout << "{ document_id = "s << document_id << " }"s << std::endl;
+    for (const auto& [document_id, relevance] : FindDocuments(documents, stop_words, query)) {
+        std::cout << "{ document_id = "s << document_id << ", relevance = "s << relevance <<" }"s << std::endl;
     }
 }
