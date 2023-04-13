@@ -69,23 +69,33 @@ void AddDocument(std::vector<std::vector<std::string>>& documents, const std::se
 // Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
 std::set<std::string> ParseQuery(const std::string& text, const std::set<std::string>& stop_words) {
     std::vector<std::string> words = SplitIntoWordsNoStop(text, stop_words);
-    std::set<std::string> query_words = {words.begin(), words.end()};    
-    return query_words;
+    return {words.begin(), words.end()};
 }
 
 // Возвращает true, если среди слов документа (document_words)
 // встречаются слова поискового запроса query_words
 bool MatchDocument(const std::vector<std::string>& document_words, const std::set<std::string>& query_words) {
-    // Напишите код функции
-
+    for(const std::string& word : document_words){
+        if(query_words.find(word) != query_words.end()){
+            return true;
+        }
+    }
     return false;
 }
 
 // Возвращает массив id документов, подходящих под запрос query
 // Стоп-слова исключаются из поиска
 std::vector<int> FindDocuments(const std::vector<std::vector<std::string>>& documents, const std::set<std::string>& stop_words,
-                          const std::string& query) {
+                          const std::string& raw_query) {
     std::vector<int> matched_documents;
+
+    std::set<std::string> query = ParseQuery(raw_query, stop_words);
+
+    for(size_t i = 0; i < documents.size(); ++i){
+        if(MatchDocument(documents[i], query)){
+            matched_documents.push_back(i);
+        }
+    }
 
     // Напишите код функции
     // Воспользуйте вспомогательными функциями ParseQuery, MatchDocument
