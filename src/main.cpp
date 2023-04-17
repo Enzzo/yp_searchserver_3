@@ -15,10 +15,6 @@ struct Document{
     int relevance;
 };
 
-bool HasDocumentGreaterRelevance(const Document& l, const Document& r){
-    return l.relevance > r.relevance;
-}
-
 std::string ReadLine() {
     std::string s;
     std::getline(std::cin, s);
@@ -70,9 +66,13 @@ private:
 public:
     void AddDocument(   int document_id, const std::string& document);
     void SetStopWords(const std::string& words);
+    const std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
+    static int MatchDocument(const DocumentContent&, const std::set<std::string>&);
 
 private:
-    std::vector<std::string> SplitIntoWordsNoStop(const std::string&);    
+    const std::vector<std::string> SplitIntoWordsNoStop(const std::string&) const;
+    const std::vector<Document> FindAllDocuments(const std::set<std::string>&) const;
+    const std::set<std::string> ParseQuery(const std::string&) const;
 };
 
 //  ------------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ void SearchServer::AddDocument( int document_id,
 }
 
 //  SplitIntoWordsNoStop
-std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& document){
+const std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& document)const{
     std::vector<std::string> words;
 
     for(const std::string& word : SplitIntoWords(document)){
@@ -105,65 +105,77 @@ void SearchServer::SetStopWords(const std::string& raw_words){
         stop_words_.insert(word);
     }
 }
+
+//  FindAllDocuments
+const std::vector<Document> SearchServer::FindAllDocuments(const std::set<std::string>& query) const {
+
+    std::vector<Document> matched_documents;
+
+    for(const DocumentContent& docs : documents_){
+        int relevance = MatchDocument(docs, query);
+        if(0 < relevance){
+            matched_documents.push_back({docs.id, relevance});
+        }
+    }
+     return matched_documents;
+}
+
+//  FindTopDocuments
+const std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const {
+    
+    std::set<std::string> query = ParseQuery(raw_query);
+    std::vector<Document> docs = FindAllDocuments(query);
+    
+    std::sort(docs.begin(), docs.end(), [](const Document& lhs, const Document& rhs){
+        return lhs.relevance > rhs.relevance;
+    });
+
+    if(MAX_RESULT_DOCUMENT_COUNT < docs.size()){
+        docs.resize(MAX_RESULT_DOCUMENT_COUNT);
+    }
+
+    // id relevance
+    return docs;
+}
+
+//  ParseQuery
+//  Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
+const std::set<std::string> SearchServer::ParseQuery(const std::string& text) const {
+    std::vector<std::string> words = SplitIntoWordsNoStop(text);
+    return {words.begin(), words.end()};
+}
+
+//  MatchDocument
+int SearchServer::MatchDocument(const DocumentContent& content, const std::set<std::string>& query_words) {
+    int relevance = 0;
+    for(const std::string& word : content.words){
+        if(query_words.find(word) != query_words.end()){
+            relevance++;;
+        }
+    }
+    return relevance;
+}
 //  ------------------------------------------------------------------------------------
 //  /SearchServer
 //  ------------------------------------------------------------------------------------
 
-// Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
-// std::set<std::string> ParseQuery(const std::string& text, const std::set<std::string>& stop_words) {
-//     std::vector<std::string> words = SplitIntoWordsNoStop(text, stop_words);
-//     return {words.begin(), words.end()};
-// }
 
-// int MatchDocument(  const DocumentContent& content, 
-//                     const std::set<std::string>& query_words) {
-//     int relevance = 0;
-//     for(const std::string& word : content.words){
-//         if(query_words.find(word) != query_words.end()){
-//             relevance++;;
-//         }
-//     }
-//     return relevance;
-// }
 
-// Для каждого документа возвращает пару {релевантность, id}
-// std::vector<Document> FindAllDocuments(
-//             const std::vector<DocumentContent>& documents,
-//             const std::set<std::string>& query) {
-
-//     std::vector<Document> matched_documents;
-
-//     for(const DocumentContent& docs : documents){
-//         int relevance = MatchDocument(docs, query);
-//         if(0 < relevance){
-//             matched_documents.push_back({docs.id, relevance});
-//         }
-//     }
-//     return matched_documents;
-// }
-
-// Возвращает самые релевантные документы в виде вектора пар {id, релевантность}
-// Находит не более MAX_RESULT_DOCUMENT_COUNT
-// std::vector<Document> FindTopDocuments(
-//     const std::vector<DocumentContent>& documents,
-//     const std::set<std::string>& stop_words, const std::string& raw_query) {
-    
-//     std::set<std::string> query = ParseQuery(raw_query, stop_words);
-//     std::vector<Document> docs = FindAllDocuments(documents, query);
-    
-//     std::sort(docs.begin(), docs.end(), HasDocumentGreaterRelevance);
-
-//     if(MAX_RESULT_DOCUMENT_COUNT < docs.size()){
-//         docs.resize(MAX_RESULT_DOCUMENT_COUNT);
-//     }
-
-//     // id relevance
-//     return docs;
-// }
+SearchServer CreateSearchServer();
 
 int main() {
-    SearchServer server;
+    SearchServer server = CreateSearchServer();
 
+    const std::string query = ReadLine();
+    //  Выводим результаты поиска по запросу query
+    for (auto [document_id, relevance] : server.FindTopDocuments(query)) {
+        std::cout << "{ document_id = "s << document_id << ", relevance = "s << relevance << " }"s
+             << std::endl;
+    }
+}
+
+SearchServer CreateSearchServer(){
+    SearchServer server;
     const std::string stop_words_joined = ReadLine();
     server.SetStopWords(stop_words_joined);
 
@@ -173,10 +185,5 @@ int main() {
         server.AddDocument(document_id, ReadLine());
     }
 
-    const std::string query = ReadLine();
-    //  Выводим результаты поиска по запросу query
-    for (auto [document_id, relevance] : FindTopDocuments(documents, stop_words, query)) {
-        std::cout << "{ document_id = "s << document_id << ", relevance = "s << relevance << " }"s
-             << std::endl;
-    }
+    return server;
 }
