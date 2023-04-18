@@ -8,7 +8,12 @@
 
 int MAX_RESULT_DOCUMENT_COUNT = 5;
 
-using namespace std::literals;
+using namespace std;
+
+struct Query{
+    std::set<std::string> plus_words;
+    std::set<std::string> minus_words;
+};
 
 struct Document{
     int id;
@@ -67,12 +72,12 @@ public:
     void AddDocument(   int document_id, const std::string& document);
     void SetStopWords(const std::string& words);
     const std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
-    static int MatchDocument(const DocumentContent&, const std::set<std::string>&);
+    static int MatchDocument(const DocumentContent&, const Query&);
 
 private:
     const std::vector<std::string> SplitIntoWordsNoStop(const std::string&) const;
-    const std::vector<Document> FindAllDocuments(const std::set<std::string>&) const;
-    const std::set<std::string> ParseQuery(const std::string&) const;
+    const std::vector<Document> FindAllDocuments(const Query&) const;
+    const Query ParseQuery(const std::string&) const;
 };
 
 //  ------------------------------------------------------------------------------------
@@ -88,7 +93,7 @@ void SearchServer::AddDocument( int document_id,
 }
 
 //  SplitIntoWordsNoStop
-const std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& document)const{
+const std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& document) const {
     std::vector<std::string> words;
 
     for(const std::string& word : SplitIntoWords(document)){
@@ -106,24 +111,23 @@ void SearchServer::SetStopWords(const std::string& raw_words){
     }
 }
 
-//  FindAllDocuments
-const std::vector<Document> SearchServer::FindAllDocuments(const std::set<std::string>& query) const {
+//  MatchDocument
+int SearchServer::MatchDocument(const DocumentContent& content, const Query& query_words) {
 
-    std::vector<Document> matched_documents;
+    if(query_words.plus_words.empty()) return 0;
 
-    for(const DocumentContent& docs : documents_){
-        int relevance = MatchDocument(docs, query);
-        if(0 < relevance){
-            matched_documents.push_back({docs.id, relevance});
-        }
+    int relevance = 0;
+    for(const std::string& word : content.words){
+        if(query_words.minus_words.count(word) != 0) return 0;
+        if(query_words.plus_words.count(word) != 0) relevance++;        
     }
-     return matched_documents;
+    return relevance;
 }
 
 //  FindTopDocuments
 const std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const {
     
-    std::set<std::string> query = ParseQuery(raw_query);
+    Query query = ParseQuery(raw_query);
     std::vector<Document> docs = FindAllDocuments(query);
     
     std::sort(docs.begin(), docs.end(), [](const Document& lhs, const Document& rhs){
@@ -138,32 +142,45 @@ const std::vector<Document> SearchServer::FindTopDocuments(const std::string& ra
     return docs;
 }
 
-//  ParseQuery
-//  Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
-const std::set<std::string> SearchServer::ParseQuery(const std::string& text) const {
-    std::vector<std::string> words = SplitIntoWordsNoStop(text);
-    return {words.begin(), words.end()};
-}
+//  FindAllDocuments
+const std::vector<Document> SearchServer::FindAllDocuments(const Query& query) const {
 
-//  MatchDocument
-int SearchServer::MatchDocument(const DocumentContent& content, const std::set<std::string>& query_words) {
-    int relevance = 0;
-    for(const std::string& word : content.words){
-        if(query_words.find(word) != query_words.end()){
-            relevance++;;
+    std::vector<Document> matched_documents;
+
+    for(const DocumentContent& docs : documents_){
+        int relevance = MatchDocument(docs, query);
+        if(0 < relevance){
+            matched_documents.push_back({docs.id, relevance});
         }
     }
-    return relevance;
+     return matched_documents;
 }
+
+//  ParseQuery
+//  Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
+const Query SearchServer::ParseQuery(const std::string& text) const {
+    Query query;
+    for(const std::string& word : SplitIntoWordsNoStop(text)){
+        if(word[0] == '-'){
+            query.minus_words.insert(word.substr(1));
+        }
+        else{
+            query.plus_words.insert(word);
+        }
+    }
+    return query;
+}
+
 //  ------------------------------------------------------------------------------------
 //  /SearchServer
 //  ------------------------------------------------------------------------------------
 
-
-
 SearchServer CreateSearchServer();
 
 int main() {
+
+    setlocale(LC_ALL, "russian");
+
     SearchServer server = CreateSearchServer();
 
     const std::string query = ReadLine();
