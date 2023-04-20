@@ -180,7 +180,7 @@ SearchServer CreateSearchServer(std::istream& ist = std::cin);
 
 int main() {
     std::ifstream ist("input.txt");
-
+    //  std::istream& ist = std::cin;
     setlocale(LC_ALL, "russian");
 
     SearchServer server = CreateSearchServer(ist);
