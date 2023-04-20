@@ -118,10 +118,13 @@ int SearchServer::MatchDocument(const DocumentContent& content, const Query& que
     if(query_words.plus_words.empty()) return 0;
 
     int relevance = 0;
-    for(const std::string& word : content.words){
+    std::set<std::string> cnt(content.words.begin(), content.words.end());
+    
+    for(const std::string& word : cnt){
         if(query_words.minus_words.count(word) != 0) return 0;
         if(query_words.plus_words.count(word) != 0) relevance++;        
     }
+    
     return relevance;
 }
 
