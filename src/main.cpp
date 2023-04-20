@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <fstream>
 
 int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -26,7 +27,21 @@ std::string ReadLine() {
     return s;
 }
 
+std::string ReadLineF() {
+    std::string s;
+    std::ifstream ist("input.txt");
+    std::getline(ist, s);
+    return s;
+}
+
 int ReadLineWithNumber() {
+    int result = 0;
+    std::cin >> result;
+    ReadLine();
+    return result;
+}
+
+int ReadLineFWithNumber() {
     int result = 0;
     std::cin >> result;
     ReadLine();
@@ -193,7 +208,7 @@ int main() {
 
 SearchServer CreateSearchServer(){
     SearchServer server;
-    const std::string stop_words_joined = ReadLine();
+    const std::string stop_words_joined = ReadLineF();
     server.SetStopWords(stop_words_joined);
 
     // Считываем документы
