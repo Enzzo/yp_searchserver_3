@@ -21,30 +21,16 @@ struct Document{
     int relevance;
 };
 
-std::string ReadLine() {
+std::string ReadLine(std::istream& ist = std::cin) {
     std::string s;
-    std::getline(std::cin, s);
-    return s;
-}
-
-std::string ReadLineF() {
-    std::string s;
-    std::ifstream ist("input.txt");
     std::getline(ist, s);
     return s;
 }
 
-int ReadLineWithNumber() {
+int ReadLineWithNumber(std::istream& ist = std::cin) {
     int result = 0;
-    std::cin >> result;
-    ReadLine();
-    return result;
-}
-
-int ReadLineFWithNumber() {
-    int result = 0;
-    std::cin >> result;
-    ReadLine();
+    ist >> result;
+    ReadLine(ist);
     return result;
 }
 
@@ -190,15 +176,16 @@ const Query SearchServer::ParseQuery(const std::string& text) const {
 //  /SearchServer
 //  ------------------------------------------------------------------------------------
 
-SearchServer CreateSearchServer();
+SearchServer CreateSearchServer(std::istream& ist = std::cin);
 
 int main() {
+    std::ifstream ist("input.txt");
 
     setlocale(LC_ALL, "russian");
 
-    SearchServer server = CreateSearchServer();
+    SearchServer server = CreateSearchServer(ist);
 
-    const std::string query = ReadLine();
+    const std::string query = ReadLine(ist);
     //  Выводим результаты поиска по запросу query
     for (auto [document_id, relevance] : server.FindTopDocuments(query)) {
         std::cout << "{ document_id = "s << document_id << ", relevance = "s << relevance << " }"s
@@ -206,15 +193,15 @@ int main() {
     }
 }
 
-SearchServer CreateSearchServer(){
+SearchServer CreateSearchServer(std::istream& ist){
     SearchServer server;
-    const std::string stop_words_joined = ReadLineF();
+    const std::string stop_words_joined = ReadLine(ist);
     server.SetStopWords(stop_words_joined);
 
     // Считываем документы
-    const int document_count = ReadLineWithNumber();
+    const int document_count = ReadLineWithNumber(ist);
     for (int document_id = 0; document_id < document_count; ++document_id) {
-        server.AddDocument(document_id, ReadLine());
+        server.AddDocument(document_id, ReadLine(ist));
     }
 
     return server;
