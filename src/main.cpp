@@ -60,13 +60,9 @@ std::vector<std::string> SplitIntoWords(const std::string& text) {
 
 class SearchServer{
 private:
-    struct DocumentContent{
-        int id;
-        std::vector<std::string> words;
-    };
 
 private:
-    std::vector<DocumentContent> documents_;
+    std::map<std::string, std::set<int>> word_to_documents_;
     std::set<std::string> stop_words_;
 
 public:
@@ -90,7 +86,9 @@ void SearchServer::AddDocument( int document_id,
                                 const std::string& document){
 
     const std::vector<std::string> words = SplitIntoWordsNoStop(document);
-    documents_.push_back({document_id, words});
+    for(const std::string word : words){
+        word_to_documents_[word].insert(document_id);
+    }
 }
 
 //  SplitIntoWordsNoStop
@@ -151,7 +149,9 @@ const std::vector<Document> SearchServer::FindAllDocuments(const Query& query) c
 
     std::vector<Document> matched_documents;
 
-    for(const DocumentContent& docs : documents_){
+    std::map<int, int> document_to_relevance;
+
+    for(const auto& [word, ids] : word_to_documents_){
         int relevance = MatchDocument(docs, query);
         if(0 < relevance){
             matched_documents.push_back({docs.id, relevance});
