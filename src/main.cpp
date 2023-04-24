@@ -18,7 +18,7 @@ struct Query{
 
 struct Document{
     int id;
-    int relevance;
+    double relevance;
 };
 
 std::string ReadLine(std::istream& ist = std::cin) {
@@ -62,7 +62,8 @@ class SearchServer{
 private:
 
 private:
-    std::map<std::string, std::set<int>> word_to_documents_;
+    int document_count_ = 0;
+    std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::set<std::string> stop_words_;
 
 public:
@@ -85,8 +86,7 @@ private:
 void SearchServer::AddDocument( int document_id, 
                                 const std::string& document){
 
-    const std::vector<std::string> words = SplitIntoWordsNoStop(document);
-    for(const std::string word : words){
+    for(const std::string word : SplitIntoWordsNoStop(document)){
         word_to_documents_[word].insert(document_id);
     }
 }
@@ -108,21 +108,6 @@ void SearchServer::SetStopWords(const std::string& raw_words){
     for(const std::string& word : SplitIntoWords(raw_words)){
         stop_words_.insert(word);
     }
-}
-
-//  MatchDocument
-int SearchServer::MatchDocument(const std::set<std::string>& content, const Query& query_words) {
-
-    if(query_words.plus_words.empty()) return 0;
-
-    int relevance = 0;
-    
-    for(const std::string& word : content){
-        if(query_words.minus_words.count(word) != 0) return 0;
-        if(query_words.plus_words.count(word) != 0) relevance++;        
-    }
-    
-    return relevance;
 }
 
 //  FindTopDocuments
@@ -147,23 +132,40 @@ const std::vector<Document> SearchServer::FindTopDocuments(const std::string& ra
 const std::vector<Document> SearchServer::FindAllDocuments(const Query& query) const {
 
     std::vector<Document> matched_documents;
-    //  std::map<int, int> document_to_relevance;
+    std::map<int, int> document_to_relevance;
 
     //  инвертируем список документов. Идентификатор - ключ
     std::map<int, std::set<std::string>> documents;
     for(const auto& [word, ids] : word_to_documents_){
         for(const int id : ids){
             documents[id].emplace(word);
-        }        
-    };
-    // for(const auto& [word, ids] : word_to_documents_){
-    //     int relevance = MatchDocument(docs, query);
-    //     if(0 < relevance){
-    //         matched_documents.push_back({docs.id, relevance});
-    //     }
-    // }
+        }
+    }
+
+    for(const auto& [id, words] : documents){
+        int relevance = MatchDocument(words, query);
+        if(0 < relevance){
+            matched_documents.push_back({id, relevance});
+        }
+    }
      return matched_documents;
 }
+
+//  MatchDocument
+int SearchServer::MatchDocument(const std::set<std::string>& content, const Query& query_words) {
+
+    if(query_words.plus_words.empty()) return 0;
+
+    int relevance = 0;
+    
+    for(const std::string& word : content){
+        if(query_words.minus_words.count(word) != 0) return 0;
+        if(query_words.plus_words.count(word) != 0) relevance++;        
+    }
+    
+    return relevance;
+}
+
 
 //  ParseQuery
 //  Разбирает text на слова и возвращает только те из них, которые не входят в stop_words
