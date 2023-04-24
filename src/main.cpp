@@ -69,7 +69,7 @@ public:
     void AddDocument(   int document_id, const std::string& document);
     void SetStopWords(const std::string& words);
     const std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
-    static int MatchDocument(const DocumentContent&, const Query&);
+    static int MatchDocument(const std::set<std::string>&, const Query&);
 
 private:
     const std::vector<std::string> SplitIntoWordsNoStop(const std::string&) const;
@@ -111,14 +111,13 @@ void SearchServer::SetStopWords(const std::string& raw_words){
 }
 
 //  MatchDocument
-int SearchServer::MatchDocument(const DocumentContent& content, const Query& query_words) {
+int SearchServer::MatchDocument(const std::set<std::string>& content, const Query& query_words) {
 
     if(query_words.plus_words.empty()) return 0;
 
     int relevance = 0;
-    std::set<std::string> cnt(content.words.begin(), content.words.end());
     
-    for(const std::string& word : cnt){
+    for(const std::string& word : content){
         if(query_words.minus_words.count(word) != 0) return 0;
         if(query_words.plus_words.count(word) != 0) relevance++;        
     }
@@ -148,15 +147,21 @@ const std::vector<Document> SearchServer::FindTopDocuments(const std::string& ra
 const std::vector<Document> SearchServer::FindAllDocuments(const Query& query) const {
 
     std::vector<Document> matched_documents;
+    //  std::map<int, int> document_to_relevance;
 
-    std::map<int, int> document_to_relevance;
-
+    //  инвертируем список документов. Идентификатор - ключ
+    std::map<int, std::set<std::string>> documents;
     for(const auto& [word, ids] : word_to_documents_){
-        int relevance = MatchDocument(docs, query);
-        if(0 < relevance){
-            matched_documents.push_back({docs.id, relevance});
-        }
-    }
+        for(const int id : ids){
+            documents[id].emplace(word);
+        }        
+    };
+    // for(const auto& [word, ids] : word_to_documents_){
+    //     int relevance = MatchDocument(docs, query);
+    //     if(0 < relevance){
+    //         matched_documents.push_back({docs.id, relevance});
+    //     }
+    // }
      return matched_documents;
 }
 
